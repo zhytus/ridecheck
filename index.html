@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RideCheck — Vehicle Maintenance Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#14171C;
+    --bg-alt:#191D24;
+    --surface:#1E242C;
+    --surface-raised:#262D37;
+    --border:#333B47;
+    --border-soft:#2A313B;
+    --text:#ECEEF1;
+    --text-mute:#8B94A3;
+    --text-faint:#5C6472;
+    --accent:#E8A33D;
+    --accent-dim:#3A2F1C;
+    --good:#5BAE7A;
+    --good-dim:#1E2E24;
+    --danger:#E0615B;
+    --danger-dim:#301F1F;
+    --display-bg:#0B0D10;
+    --display-text:#F4C463;
+    --radius-s:6px;
+    --radius-m:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.num,button,.mono{font-family:'Space Grotesk',sans-serif;}
+  button{font-size:14px;}
+
+  @media (prefers-reduced-motion: no-preference){
+    .app{animation:riseIn .5s ease both;}
+    @keyframes riseIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+  }
+
+  .app{
+    max-width:1100px;
+    margin:0 auto;
+    padding:28px 20px 80px;
+    min-height:100%;
+  }
+
+  header.top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:16px;
+    margin-bottom:28px;
+    flex-wrap:wrap;
+  }
+  .wordmark{
+    display:flex;
+    align-items:baseline;
+    gap:10px;
+  }
+  .wordmark h1{
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0;
+  }
+  .wordmark h1 span{color:var(--accent);}
+  .wordmark .tag{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    color:var(--text-faint);
+  }
+  .btn{
+    border:1px solid var(--border);
+    background:var(--surface);
+    color:var(--text);
+    padding:9px 16px;
+    border-radius:var(--radius-s);
+    cursor:pointer;
+    font-weight:500;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .btn:hover{border-color:var(--accent);}
+  .btn:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  .btn.primary{
+    background:var(--accent);
+    color:#1B1503;
+    border-color:var(--accent);
+    font-weight:600;
+  }
+  .btn.primary:hover{filter:brightness(1.08);}
+  .btn.ghost{
+    background:transparent;
+    border-color:transparent;
+    color:var(--text-mute);
+    padding:6px 8px;
+  }
+  .btn.ghost:hover{color:var(--danger);}
+  .btn.small{padding:6px 12px;font-size:13px;}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .layout{
+    display:grid;
+    grid-template-columns:270px 1fr;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width:800px){
+    .layout{grid-template-columns:1fr;}
+  }
+
+  /* ---- Sidebar / vehicle list ---- */
+  .sidebar-label{
+    font-size:12px;
+    color:var(--text-faint);
+    margin:0 0 10px 4px;
+    letter-spacing:.02em;
+  }
+  .vehicle-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  .vehicle-item{
+    position:relative;
+    background:var(--surface);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-m);
+    padding:14px 14px 14px 22px;
+    cursor:pointer;
+    text-align:left;
+    width:100%;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:12px;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .vehicle-item::before{
+    content:'';
+    position:absolute;
+    left:0;top:0;bottom:0;width:14px;
+    background-image:radial-gradient(circle at 7px 9px, var(--bg) 3.4px, transparent 3.6px);
+    background-size:14px 18px;
+    background-repeat:repeat-y;
+    border-right:1px dashed var(--border);
+  }
+  .vehicle-item:hover{border-color:var(--text-faint);}
+  .vehicle-item.active{
+    border-color:var(--accent);
+    background:var(--surface-raised);
+  }
+  .vehicle-item .v-info{flex:1;min-width:0;}
+  .vehicle-item .v-name{
+    font-weight:600;
+    font-size:14.5px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .vehicle-item .v-sub{
+    font-size:12px;
+    color:var(--text-mute);
+    margin-top:2px;
+  }
+  .ring{
+    width:34px;height:34px;flex-shrink:0;
+  }
+  .ring circle.track{stroke:var(--border);}
+  .ring circle.fill{
+    stroke-linecap:round;
+    transform:rotate(-90deg);
+    transform-origin:50% 50%;
+    transition:stroke-dashoffset .4s ease;
+  }
+  .ring text{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:10px;
+    fill:var(--text-mute);
+  }
+
+  .add-vehicle-btn{
+    margin-top:12px;
+    width:100%;
+    border:1px dashed var(--border);
+    background:transparent;
+    color:var(--text-mute);
+    padding:11px;
+    border-radius:var(--radius-m);
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+  }
+  .add-vehicle-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* ---- Main panel ---- */
+  .panel{
+    background:var(--surface);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-m);
+    padding:22px;
+    min-height:420px;
+  }
+  .empty-state{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    min-height:380px;
+    color:var(--text-mute);
+    gap:10px;
+    max-width:360px;
+  }
+  .empty-state h2{font-size:17px;margin:0;color:var(--text);}
+  .empty-state p{margin:0;font-size:14px;line-height:1.5;}
+
+  .vehicle-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+    margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .vehicle-head h2{
+    font-size:20px;
+    margin:0 0 4px 0;
+  }
+  .vehicle-head .meta{
+    display:flex;
+    gap:14px;
+    align-items:center;
+    color:var(--text-mute);
+    font-size:13px;
+    flex-wrap:wrap;
+  }
+  .odometer-edit{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  .odometer-edit input{
+    width:90px;
+    background:var(--bg-alt);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:5px 8px;
+    border-radius:5px;
+    font-family:'Space Grotesk',sans-serif;
+  }
+  .head-actions{display:flex;gap:8px;}
+
+  /* Digital display hero */
+  .hero-display{
+    background:var(--display-bg);
+    border:1px solid var(--border);
+    border-radius:var(--radius-m);
+    padding:20px 22px;
+    margin-bottom:26px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .hero-display .label{
+    font-size:11.5px;
+    color:var(--text-faint);
+    margin-bottom:6px;
+  }
+  .hero-display .value{
+    font-size:34px;
+    font-weight:700;
+    color:var(--display-text);
+    text-shadow:0 0 14px rgba(244,196,99,0.35);
+    letter-spacing:0.01em;
+    line-height:1;
+  }
+  .hero-display .value small{
+    font-size:15px;
+    color:var(--display-text);
+    opacity:.75;
+    margin-left:6px;
+    font-weight:500;
+  }
+  .hero-display .sub{
+    font-size:13px;
+    color:var(--text-mute);
+    margin-top:6px;
+  }
+  .hero-display.status-good .value{color:var(--good);text-shadow:0 0 14px rgba(91,174,122,.35);}
+  .hero-display.status-danger .value{color:var(--danger);text-shadow:0 0 14px rgba(224,97,91,.35);}
+
+  .section-label{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:12px;
+  }
+  .section-label h3{
+    font-size:14px;
+    color:var(--text-mute);
+    font-weight:500;
+    margin:0;
+  }
+
+  .component-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+  .component-row{
+    background:var(--bg-alt);
+    border:1px solid var(--border-soft);
+    border-radius:var(--radius-s);
+    padding:13px 14px;
+  }
+  .component-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:9px;
+  }
+  .component-name{font-weight:600;font-size:14px;}
+  .component-status{
+    font-size:11.5px;
+    padding:2px 8px;
+    border-radius:20px;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .component-status.good{background:var(--good-dim);color:var(--good);}
+  .component-status.warn{background:var(--accent-dim);color:var(--accent);}
+  .component-status.danger{background:var(--danger-dim);color:var(--danger);}
+
+  .gauge{
+    height:8px;
+    border-radius:4px;
+    background:
+      repeating-linear-gradient(90deg, var(--border) 0 1px, transparent 1px 12.5%),
+      var(--surface-raised);
+    position:relative;
+    overflow:hidden;
+    margin-bottom:8px;
+  }
+  .gauge-fill{
+    height:100%;
+    border-radius:4px;
+    transition:width .4s ease;
+  }
+  .gauge-fill.good{background:var(--good);}
+  .gauge-fill.warn{background:var(--accent);}
+  .gauge-fill.danger{background:var(--danger);}
+
+  .component-bottom{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12.5px;
+    color:var(--text-mute);
+  }
+  .component-actions{display:flex;gap:6px;}
+
+  .add-component-btn{
+    width:100%;
+    border:1px dashed var(--border);
+    background:transparent;
+    color:var(--text-mute);
+    padding:10px;
+    border-radius:var(--radius-s);
+    cursor:pointer;
+    font-family:'Inter',sans-serif;
+    font-size:13.5px;
+  }
+  .add-component-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+  /* ---- Modal / form ---- */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(10,12,15,0.6);
+    display:flex;align-items:center;justify-content:center;
+    padding:20px;
+    z-index:50;
+  }
+  .modal{
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    border-radius:var(--radius-m);
+    padding:22px;
+    width:100%;
+    max-width:380px;
+  }
+  .modal h3{margin:0 0 16px 0;font-size:16px;}
+  .field{margin-bottom:14px;}
+  .field label{
+    display:block;
+    font-size:12.5px;
+    color:var(--text-mute);
+    margin-bottom:6px;
+  }
+  .field input, .field select{
+    width:100%;
+    background:var(--bg-alt);
+    border:1px solid var(--border);
+    color:var(--text);
+    padding:9px 10px;
+    border-radius:var(--radius-s);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+  }
+  .field-row{display:flex;gap:10px;}
+  .field-row .field{flex:1;}
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:18px;
+  }
+  .hint{font-size:11.5px;color:var(--text-faint);margin-top:5px;}
+
+  .auth-card{max-width:380px;margin:40px auto;background:var(--surface);border:1px solid var(--border-soft);border-radius:var(--radius-m);padding:26px;}
+  .auth-card h2{margin:0 0 6px 0;font-size:19px;}
+  .auth-card p.sub{margin:0 0 18px 0;color:var(--text-mute);font-size:13.5px;line-height:1.5;}
+  .auth-actions{display:flex;gap:8px;margin-top:6px;}
+  .auth-actions .btn{flex:1;}
+  .header-actions{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--text-mute);}
+  .setup-note{max-width:520px;margin:40px auto;color:var(--text-mute);font-size:14px;line-height:1.6;}
+  .setup-note code{background:var(--bg-alt);padding:2px 6px;border-radius:4px;color:var(--accent);}
+  .add-row{display:flex;gap:10px;}
+  .add-row .add-component-btn{flex:1;}
+  .component-action{font-family:'Inter',sans-serif;font-weight:400;font-size:12px;color:var(--text-faint);margin-left:4px;}
+  .component-notes{font-size:12px;color:var(--text-faint);margin-top:3px;line-height:1.4;}
+  .modal.wide{max-width:600px;max-height:88vh;display:flex;flex-direction:column;}
+  .suggest-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+  .suggest-top .field{margin:0;min-width:200px;}
+  .suggest-list{min-height:0;overflow-y:auto;border:1px solid var(--border-soft);border-radius:var(--radius-s);background:var(--bg-alt);}
+  .suggest-cat{font-size:11.5px;color:var(--text-faint);padding:10px 12px 4px;letter-spacing:.03em;text-transform:uppercase;}
+  .suggest-row{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;cursor:pointer;border-top:1px solid var(--border-soft);}
+  .suggest-row.disabled{opacity:.5;cursor:default;}
+  .suggest-row input{margin-top:3px;accent-color:var(--accent);}
+  .s-name{font-size:14px;font-weight:600;}
+  .s-action{font-weight:400;font-size:12px;color:var(--text-faint);margin-left:4px;}
+  .s-meta{font-size:12.5px;color:var(--accent);margin-top:2px;}
+  .s-notes{font-size:12px;color:var(--text-mute);margin-top:2px;line-height:1.4;}
+  .suggest-foot{font-size:12px;color:var(--text-faint);line-height:1.5;margin:12px 0 0 0;}
+  .loading-note{
+    color:var(--text-faint);
+    font-size:13px;
+    padding:40px 0;
+    text-align:center;
+  }
+  .toast{
+    position:fixed;
+    bottom:22px;left:50%;
+    transform:translateX(-50%);
+    background:var(--surface-raised);
+    border:1px solid var(--border);
+    padding:10px 18px;
+    border-radius:8px;
+    font-size:13.5px;
+    color:var(--text);
+    box-shadow:0 6px 20px rgba(0,0,0,.35);
+    z-index:60;
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header class="top">
+    <div class="wordmark">
+      <h1>Ride<span>Check</span></h1>
+      <div class="tag">vehicle maintenance, tracked</div>
+    </div>
+    <div class="header-actions" id="header-actions"></div>
+  </header>
+
+  <div id="root">
+    <div class="loading-note">Loading your garage…</div>
+  </div>
+</div>
+
+<script>
+(function(){
+
+  let vehicles = [];
+  let activeVehicleId = null;
+  let storageReady = false;
+
+  const root = document.getElementById('root');
+
+  function uid(prefix){
+    return prefix + '_' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
+  }
+
+  function todayISO(){
+    return new Date().toISOString().slice(0,10);
+  }
+
+  function daysBetween(a,b){
+    return Math.round((new Date(b) - new Date(a)) / 86400000);
+  }
+
+  // ---------- Supabase config ----------
+  // Paste your project values from Supabase -> Project Settings -> API.
+  // The publishable/anon key is safe to expose in the browser because
+  // Row Level Security (see schema.sql) restricts each user to their own row.
+  const SUPABASE_URL = 'https://ergzqwjjcteozydpracx.supabase.co/rest/v1/';
+  const SUPABASE_KEY = 'sb_publishable_KFLe0RBzW1qU16IqFoX6lQ_qzjUQl-v';
+
+  // Shown on the pending-activation screen so people know how to reach you.
+  const OWNER_CONTACT = 'the app owner';
+
+  const configured = !SUPABASE_URL.startsWith('YOUR_') && !SUPABASE_KEY.startsWith('YOUR_');
+  const sb = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+  let session = null;
+
+  // ---------- storage (Supabase table: garages) ----------
+  async function loadVehicles(){
+    const { data, error } = await sb.from('garages')
+      .select('data')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if(error){
+      vehicles = [];
+      showToast("Couldn't load your garage: " + error.message);
+    } else {
+      vehicles = data && Array.isArray(data.data) ? data.data : [];
+    }
+    storageReady = true;
+  }
+
+  async function saveVehicles(){
+    const { error } = await sb.from('garages').upsert({
+      user_id: session.user.id,
+      data: vehicles,
+      updated_at: new Date().toISOString()
+    });
+    if(error){
+      showToast("Couldn't save: " + error.message);
+    }
+  }
+
+  // ---------- auth ----------
+  function updateHeader(){
+    const el = document.getElementById('header-actions');
+    if(!session){ el.innerHTML = ''; return; }
+    el.innerHTML = '<span>' + escapeHtml(session.user.email || '') + '</span><button class="btn small" id="btn-signout">Sign out</button>';
+    document.getElementById('btn-signout').onclick = async ()=>{
+      await sb.auth.signOut();
+      session = null;
+      vehicles = [];
+      activeVehicleId = null;
+      storageReady = false;
+      updateHeader();
+      renderAuth();
+    };
+  }
+
+  async function checkApproved(){
+    const { data, error } = await sb.from('approved_users')
+      .select('user_id')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+    if(error){
+      showToast("Couldn't check account status: " + error.message);
+      return false;
+    }
+    return !!data;
+  }
+
+  async function afterLogin(){
+    updateHeader();
+    if(await checkApproved()){
+      await loadVehicles();
+      render();
+    } else {
+      renderPending();
+    }
+  }
+
+  function renderPending(){
+    root.innerHTML = `
+      <div class="auth-card">
+        <h2>Account pending activation</h2>
+        <p class="sub">Your account has been created, but it needs to be activated before you can use RideCheck. Contact ${escapeHtml(OWNER_CONTACT)} to request an activation code, then enter it below.</p>
+        <div class="field">
+          <label for="a-code">Activation code</label>
+          <input id="a-code" type="text" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="auth-actions">
+          <button class="btn primary" id="a-activate">Activate account</button>
+        </div>
+      </div>`;
+    document.getElementById('a-activate').onclick = async ()=>{
+      const code = document.getElementById('a-code').value.trim();
+      if(!code){ showToast('Enter your activation code.'); return; }
+      const { data, error } = await sb.rpc('activate_account', { p_code: code });
+      if(error){ showToast(error.message); return; }
+      if(data === true){
+        showToast('Account activated.');
+        await loadVehicles();
+        render();
+      } else {
+        showToast('That code is invalid or has already been used.');
+      }
+    };
+  }
+
+  function renderAuth(){
+    root.innerHTML = `
+      <div class="auth-card">
+        <h2>Sign in to your garage</h2>
+        <p class="sub">Your vehicles sync to your account, so you can check them from any device.</p>
+        <div class="field">
+          <label for="a-email">Email</label>
+          <input id="a-email" type="email" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="a-pass">Password</label>
+          <input id="a-pass" type="password" autocomplete="current-password" minlength="6">
+        </div>
+        <div class="auth-actions">
+          <button class="btn primary" id="a-signin">Sign in</button>
+          <button class="btn" id="a-signup">Create account</button>
+        </div>
+      </div>`;
+    const email = ()=>document.getElementById('a-email').value.trim();
+    const pass = ()=>document.getElementById('a-pass').value;
+    document.getElementById('a-signin').onclick = async ()=>{
+      if(!email() || !pass()){ showToast('Enter your email and password.'); return; }
+      const { data, error } = await sb.auth.signInWithPassword({ email: email(), password: pass() });
+      if(error){ showToast(error.message); return; }
+      session = data.session;
+      await afterLogin();
+    };
+    document.getElementById('a-signup').onclick = async ()=>{
+      if(!email() || pass().length < 6){ showToast('Use a valid email and a password of 6+ characters.'); return; }
+      const { data, error } = await sb.auth.signUp({ email: email(), password: pass() });
+      if(error){ showToast(error.message); return; }
+      if(data.session){
+        session = data.session;
+        await afterLogin();
+      } else {
+        showToast('Check your email to confirm your account, then sign in.');
+      }
+    };
+  }
+
+  function showToast(msg){
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(()=>t.remove(), 2600);
+  }
+
+  // ---------- computations ----------
+  function componentFraction(vehicle, comp){
+    let fractions = [];
+    if(comp.intervalDistance && comp.intervalDistance > 0){
+      const used = vehicle.odometer - comp.lastOdometer;
+      fractions.push(used / comp.intervalDistance);
+    }
+    if(comp.intervalDays && comp.intervalDays > 0){
+      const used = daysBetween(comp.lastDate, todayISO());
+      fractions.push(used / comp.intervalDays);
+    }
+    if(fractions.length === 0) return 0;
+    return Math.max(...fractions);
+  }
+
+  function statusFromFraction(f){
+    if(f >= 1) return 'danger';
+    if(f >= 0.7) return 'warn';
+    return 'good';
+  }
+
+  function remainingLabel(vehicle, comp){
+    const distLeft = comp.intervalDistance ? comp.intervalDistance - (vehicle.odometer - comp.lastOdometer) : null;
+    const daysLeft = comp.intervalDays ? comp.intervalDays - daysBetween(comp.lastDate, todayISO()) : null;
+    const parts = [];
+    if(distLeft !== null){
+      parts.push(distLeft >= 0 ? `${Math.round(distLeft).toLocaleString()} ${vehicle.unit} left` : `${Math.abs(Math.round(distLeft)).toLocaleString()} ${vehicle.unit} overdue`);
+    }
+    if(daysLeft !== null){
+      parts.push(daysLeft >= 0 ? `${daysLeft}d left` : `${Math.abs(daysLeft)}d overdue`);
+    }
+    return parts.join(' · ') || '—';
+  }
+
+  function vehicleOverallFraction(vehicle){
+    if(!vehicle.components || vehicle.components.length === 0) return 0;
+    return Math.max(...vehicle.components.map(c => componentFraction(vehicle, c)));
+  }
+
+  function nextDueComponent(vehicle){
+    if(!vehicle.components || vehicle.components.length === 0) return null;
+    let best = null, bestF = -Infinity;
+    vehicle.components.forEach(c=>{
+      const f = componentFraction(vehicle, c);
+      if(f > bestF){ bestF = f; best = c; }
+    });
+    return best;
+  }
+
+  // ---------- rendering ----------
+  function render(){
+    if(!storageReady){
+      root.innerHTML = '<div class="loading-note">Loading your garage…</div>';
+      return;
+    }
+    if(vehicles.length === 0){
+      root.innerHTML = `
+        <div class="layout">
+          <div>
+            <p class="sidebar-label">GARAGE</p>
+            <button class="add-vehicle-btn" id="btn-add-vehicle-empty">+ Add a vehicle</button>
+          </div>
+          <div class="panel">
+            <div class="empty-state">
+              <h2>Your garage is empty</h2>
+              <p>Add a car or motorcycle to start tracking oil changes, tires, and everything else that keeps it running.</p>
+              <button class="btn primary" id="btn-add-vehicle-empty-2" style="margin-top:6px;">+ Add your first vehicle</button>
+            </div>
+          </div>
+        </div>`;
+      document.getElementById('btn-add-vehicle-empty').onclick = ()=>openVehicleModal();
+      document.getElementById('btn-add-vehicle-empty-2').onclick = ()=>openVehicleModal();
+      return;
+    }
+
+    if(!activeVehicleId || !vehicles.find(v=>v.id===activeVehicleId)){
+      activeVehicleId = vehicles[0].id;
+    }
+
+    const listHtml = vehicles.map(v=>{
+      const f = vehicleOverallFraction(v);
+      const pct = Math.max(0, Math.min(1, f));
+      const status = statusFromFraction(f);
+      const color = status==='good' ? 'var(--good)' : status==='warn' ? 'var(--accent)' : 'var(--danger)';
+      const circumference = 2*Math.PI*13;
+      const offset = circumference * (1-pct);
+      const healthPct = Math.round((1-Math.min(f,1))*100);
+      return `
+        <button class="vehicle-item ${v.id===activeVehicleId?'active':''}" data-id="${v.id}">
+          <svg class="ring" viewBox="0 0 34 34">
+            <circle class="track" cx="17" cy="17" r="13" fill="none" stroke-width="3"></circle>
+            <circle class="fill" cx="17" cy="17" r="13" fill="none" stroke="${color}" stroke-width="3"
+              stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"></circle>
+            <text x="17" y="20" text-anchor="middle">${healthPct}</text>
+          </svg>
+          <div class="v-info">
+            <div class="v-name">${escapeHtml(v.name)}</div>
+            <div class="v-sub">${v.odometer.toLocaleString()} ${v.unit}</div>
+          </div>
+        </button>`;
+    }).join('');
+
+    const activeVehicle = vehicles.find(v=>v.id===activeVehicleId);
+
+    root.innerHTML = `
+      <div class="layout">
+        <div>
+          <p class="sidebar-label">GARAGE</p>
+          <div class="vehicle-list">${listHtml}</div>
+          <button class="add-vehicle-btn" id="btn-add-vehicle">+ Add a vehicle</button>
+        </div>
+        <div class="panel" id="panel"></div>
+      </div>
+    `;
+
+    document.querySelectorAll('.vehicle-item').forEach(btn=>{
+      btn.onclick = ()=>{ activeVehicleId = btn.dataset.id; render(); };
+    });
+    document.getElementById('btn-add-vehicle').onclick = ()=>openVehicleModal();
+
+    renderVehiclePanel(activeVehicle);
+  }
+
+  function renderVehiclePanel(v){
+    const panel = document.getElementById('panel');
+    const next = nextDueComponent(v);
+    let heroHtml;
+    if(!next){
+      heroHtml = `
+        <div class="hero-display">
+          <div>
+            <div class="label">NEXT SERVICE DUE</div>
+            <div class="value" style="color:var(--text-mute);text-shadow:none;">—</div>
+            <div class="sub">Add a component to start tracking.</div>
+          </div>
+        </div>`;
+    } else {
+      const f = componentFraction(v, next);
+      const status = statusFromFraction(f);
+      const label = remainingLabel(v, next);
+      heroHtml = `
+        <div class="hero-display status-${status}">
+          <div>
+            <div class="label">NEXT SERVICE DUE — ${escapeHtml(next.name).toUpperCase()}</div>
+            <div class="value">${label}</div>
+            <div class="sub">${status==='danger' ? 'Past due — log service when done.' : status==='warn' ? 'Coming up soon.' : 'On track.'}</div>
+          </div>
+        </div>`;
+    }
+
+    const compsHtml = (v.components||[]).map(c=>{
+      const f = componentFraction(v, c);
+      const status = statusFromFraction(f);
+      const pct = Math.max(0, Math.min(1, f)) * 100;
+      const statusLabel = status==='danger' ? 'Overdue' : status==='warn' ? 'Due soon' : 'On track';
+      return `
+        <div class="component-row">
+          <div class="component-top">
+            <div><div class="component-name">${escapeHtml(c.name)}${c.action ? ' <span class="component-action">' + escapeHtml(c.action) + '</span>' : ''}</div>${c.notes ? '<div class="component-notes">' + escapeHtml(c.notes) + '</div>' : ''}</div>
+            <div class="component-status ${status}">${statusLabel}</div>
+          </div>
+          <div class="gauge"><div class="gauge-fill ${status}" style="width:${pct}%"></div></div>
+          <div class="component-bottom">
+            <span>${remainingLabel(v, c)}</span>
+            <div class="component-actions">
+              <button class="btn small" data-log="${c.id}">Log service</button>
+              <button class="btn ghost" data-del-comp="${c.id}" aria-label="Delete ${escapeHtml(c.name)}">✕</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div class="vehicle-head">
+        <div>
+          <h2>${escapeHtml(v.name)}</h2>
+          <div class="meta">
+            <span>${typeLabel(v.type)}</span>
+            <span class="odometer-edit">
+              <input type="number" id="odo-input" value="${v.odometer}" min="0" aria-label="Odometer reading">
+              <span>${v.unit}</span>
+            </span>
+          </div>
+        </div>
+        <div class="head-actions">
+          <button class="btn small" id="btn-save-odo">Update odometer</button>
+          <button class="btn ghost" id="btn-del-vehicle" aria-label="Delete vehicle">Delete</button>
+        </div>
+      </div>
+
+      ${heroHtml}
+
+      <div class="section-label"><h3>COMPONENTS</h3></div>
+      <div class="component-list">
+        ${compsHtml || '<p style="color:var(--text-faint);font-size:13.5px;">No components tracked yet — add one below.</p>'}
+      </div>
+      <div class="add-row"><button class="add-component-btn" id="btn-suggest">Suggested maintenance</button><button class="add-component-btn" id="btn-add-component">+ Add component</button></div>
+    `;
+
+    document.getElementById('btn-save-odo').onclick = async ()=>{
+      const val = parseFloat(document.getElementById('odo-input').value);
+      if(isNaN(val) || val < 0){ showToast('Enter a valid odometer reading.'); return; }
+      v.odometer = val;
+      await saveVehicles();
+      render();
+    };
+    document.getElementById('btn-del-vehicle').onclick = ()=>{
+      openConfirm(`Delete ${v.name}? This removes all its service history.`, async ()=>{
+        vehicles = vehicles.filter(x=>x.id!==v.id);
+        activeVehicleId = vehicles.length ? vehicles[0].id : null;
+        await saveVehicles();
+        render();
+      });
+    };
+    document.getElementById('btn-add-component').onclick = ()=>openComponentModal(v);
+    document.getElementById('btn-suggest').onclick = ()=>openSuggestModal(v);
+
+    panel.querySelectorAll('[data-log]').forEach(btn=>{
+      btn.onclick = async ()=>{
+        const comp = v.components.find(c=>c.id===btn.dataset.log);
+        comp.lastOdometer = v.odometer;
+        comp.lastDate = todayISO();
+        await saveVehicles();
+        render();
+        showToast(`Logged service for ${comp.name}.`);
+      };
+    });
+    panel.querySelectorAll('[data-del-comp]').forEach(btn=>{
+      btn.onclick = ()=>{
+        const comp = v.components.find(c=>c.id===btn.dataset.delComp);
+        openConfirm(`Remove ${comp.name} from tracking?`, async ()=>{
+          v.components = v.components.filter(c=>c.id!==comp.id);
+          await saveVehicles();
+          render();
+        });
+      };
+    });
+  }
+
+  function typeLabel(t){
+    return t === 'motorcycle' ? 'Motorcycle' : t === 'scooter' ? 'Scooter' : 'Car';
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ---------- modals ----------
+  function openModal(innerHtml, onMount){
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.innerHTML = `<div class="modal">${innerHtml}</div>`;
+    overlay.addEventListener('click', (e)=>{ if(e.target === overlay) overlay.remove(); });
+    document.body.appendChild(overlay);
+    onMount(overlay);
+    const firstInput = overlay.querySelector('input, select');
+    if(firstInput) firstInput.focus();
+    return overlay;
+  }
+
+  function openVehicleModal(){
+    openModal(`
+      <h3>Add a vehicle</h3>
+      <div class="field">
+        <label for="f-name">Name</label>
+        <input id="f-name" type="text" placeholder="e.g. Civic, CBR500">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="f-type">Type</label>
+          <select id="f-type">
+            <option value="motorcycle">Motorcycle</option>
+            <option value="scooter">Scooter</option>
+            <option value="car">Car</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-unit">Unit</label>
+          <select id="f-unit">
+            <option value="mi">Miles</option>
+            <option value="km">Kilometers</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-odo">Current odometer</label>
+        <input id="f-odo" type="number" min="0" placeholder="0">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="cancel">Cancel</button>
+        <button class="btn primary" id="save">Add vehicle</button>
+      </div>
+    `, (overlay)=>{
+      overlay.querySelector('#cancel').onclick = ()=>overlay.remove();
+      overlay.querySelector('#save').onclick = async ()=>{
+        const name = overlay.querySelector('#f-name').value.trim();
+        const type = overlay.querySelector('#f-type').value;
+        const unit = overlay.querySelector('#f-unit').value;
+        const odo = parseFloat(overlay.querySelector('#f-odo').value) || 0;
+        if(!name){ showToast('Give the vehicle a name.'); return; }
+        const v = { id: uid('v'), name, type, unit, odometer: odo, components: [] };
+        vehicles.push(v);
+        activeVehicleId = v.id;
+        await saveVehicles();
+        overlay.remove();
+        render();
+        if(v.type !== 'car'){ openSuggestModal(v); }
+      };
+    });
+  }
+
+  function openComponentModal(vehicle){
+    openModal(`
+      <h3>Add a component</h3>
+      <div class="field">
+        <label for="c-name">Name</label>
+        <input id="c-name" type="text" placeholder="e.g. Oil change, Tire rotation">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="c-dist">Service every (${vehicle.unit})</label>
+          <input id="c-dist" type="number" min="0" placeholder="e.g. 5000">
+        </div>
+        <div class="field">
+          <label for="c-days">Or every (days)</label>
+          <input id="c-days" type="number" min="0" placeholder="e.g. 180">
+        </div>
+      </div>
+      <p class="hint">Set one or both — whichever comes first will trigger the reminder.</p>
+      <div class="field">
+        <label for="c-last-odo">Last serviced at (${vehicle.unit})</label>
+        <input id="c-last-odo" type="number" min="0" value="${vehicle.odometer}">
+      </div>
+      <div class="field">
+        <label for="c-last-date">Last serviced on</label>
+        <input id="c-last-date" type="date" value="${todayISO()}">
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="cancel">Cancel</button>
+        <button class="btn primary" id="save">Add component</button>
+      </div>
+    `, (overlay)=>{
+      overlay.querySelector('#cancel').onclick = ()=>overlay.remove();
+      overlay.querySelector('#save').onclick = async ()=>{
+        const name = overlay.querySelector('#c-name').value.trim();
+        const intervalDistance = parseFloat(overlay.querySelector('#c-dist').value) || 0;
+        const intervalDays = parseFloat(overlay.querySelector('#c-days').value) || 0;
+        const lastOdometer = parseFloat(overlay.querySelector('#c-last-odo').value) || 0;
+        const lastDate = overlay.querySelector('#c-last-date').value || todayISO();
+        if(!name){ showToast('Give the component a name.'); return; }
+        if(!intervalDistance && !intervalDays){ showToast('Set a distance or time interval.'); return; }
+        vehicle.components = vehicle.components || [];
+        vehicle.components.push({ id: uid('c'), name, intervalDistance, intervalDays, lastOdometer, lastDate });
+        await saveVehicles();
+        overlay.remove();
+        render();
+      };
+    });
+  }
+
+  async function openSuggestModal(vehicle){
+    const overlay = openModal('<h3>Suggested maintenance</h3><div class="loading-note">Loading suggestions…</div>', ()=>{});
+    const modal = overlay.querySelector('.modal');
+    modal.classList.add('wide');
+
+    const closeOnly = (msg)=>{
+      modal.innerHTML = '<h3>Suggested maintenance</h3><p style="color:var(--text-mute);font-size:14px;margin:0;">' + escapeHtml(msg) + '</p><div class="modal-actions"><button class="btn" id="s-close">Close</button></div>';
+      modal.querySelector('#s-close').onclick = ()=>overlay.remove();
+    };
+
+    const { data, error } = await sb.from('maintenance_templates')
+      .select('*')
+      .contains('applies_to', [vehicle.type])
+      .order('sort_order');
+    if(error){ closeOnly("Couldn't load suggestions: " + error.message); return; }
+    const templates = data || [];
+    if(templates.length === 0){ closeOnly('No suggestions are available for this vehicle type yet.'); return; }
+
+    const tracked = new Set((vehicle.components || []).map(c => c.name.toLowerCase()));
+    const unit = vehicle.unit;
+    const conv = (km)=> unit === 'mi' ? Math.max(10, Math.round(km * 0.621371 / 10) * 10) : km;
+    const fmt = (n)=> n.toLocaleString();
+
+    const intervalText = (t)=>{
+      const parts = [];
+      if(t.interval_km_min){
+        const lo = conv(t.interval_km_min), hi = conv(t.interval_km_max || t.interval_km_min);
+        parts.push(lo === hi ? fmt(lo) + ' ' + unit : fmt(lo) + '–' + fmt(hi) + ' ' + unit);
+      }
+      if(t.interval_months){
+        parts.push(t.interval_months + (t.interval_months === 1 ? ' month' : ' months'));
+      }
+      return 'Every ' + parts.join(' or ');
+    };
+
+    let rowsHtml = '', lastCat = null;
+    templates.forEach(t=>{
+      if(t.category !== lastCat){
+        rowsHtml += '<div class="suggest-cat">' + escapeHtml(t.category) + '</div>';
+        lastCat = t.category;
+      }
+      const already = tracked.has(t.name.toLowerCase());
+      rowsHtml += `
+        <label class="suggest-row ${already ? 'disabled' : ''}">
+          <input type="checkbox" data-id="${t.id}" ${already ? 'disabled' : (t.default_selected ? 'checked' : '')}>
+          <div>
+            <div class="s-name">${escapeHtml(t.name)}<span class="s-action">${escapeHtml(t.action)}</span></div>
+            <div class="s-meta">${already ? 'Already tracked' : escapeHtml(intervalText(t))}</div>
+            ${t.notes ? '<div class="s-notes">' + escapeHtml(t.notes) + '</div>' : ''}
+          </div>
+        </label>`;
+    });
+
+    modal.innerHTML = `
+      <h3>Suggested maintenance for ${escapeHtml(vehicle.name)}</h3>
+      <div class="suggest-top">
+        <div class="field">
+          <label for="s-mode">Interval to use</label>
+          <select id="s-mode">
+            <option value="short">Conservative (shorter)</option>
+            <option value="long">Relaxed (longer)</option>
+          </select>
+        </div>
+      </div>
+      <div class="suggest-list">${rowsHtml}</div>
+      <p class="suggest-foot">These are typical intervals for general guidance. Your owner’s manual takes priority. Tracking starts from your current odometer and today’s date; press “Log service” after your next service to keep it accurate.</p>
+      <div class="modal-actions">
+        <button class="btn" id="s-cancel">Cancel</button>
+        <button class="btn primary" id="s-add">Add selected</button>
+      </div>`;
+
+    modal.querySelector('#s-cancel').onclick = ()=>overlay.remove();
+    modal.querySelector('#s-add').onclick = async ()=>{
+      const useLong = modal.querySelector('#s-mode').value === 'long';
+      const picked = templates.filter(t=>{
+        const box = modal.querySelector('input[data-id="' + t.id + '"]');
+        return box && box.checked && !box.disabled;
+      });
+      if(picked.length === 0){ showToast('Select at least one item.'); return; }
+      vehicle.components = vehicle.components || [];
+      picked.forEach(t=>{
+        const km = useLong ? (t.interval_km_max || t.interval_km_min) : t.interval_km_min;
+        vehicle.components.push({
+          id: uid('c'),
+          name: t.name,
+          action: t.action,
+          category: t.category,
+          notes: t.notes || '',
+          intervalDistance: km ? conv(km) : 0,
+          intervalDays: t.interval_months ? t.interval_months * 30 : 0,
+          lastOdometer: vehicle.odometer,
+          lastDate: todayISO()
+        });
+      });
+      await saveVehicles();
+      overlay.remove();
+      render();
+      showToast('Added ' + picked.length + (picked.length === 1 ? ' item.' : ' items.'));
+    };
+  }
+
+  function openConfirm(message, onConfirm){
+    openModal(`
+      <h3>Are you sure?</h3>
+      <p style="color:var(--text-mute);font-size:14px;margin:0 0 4px 0;">${escapeHtml(message)}</p>
+      <div class="modal-actions">
+        <button class="btn" id="cancel">Cancel</button>
+        <button class="btn primary" id="confirm" style="background:var(--danger);border-color:var(--danger);color:#fff;">Delete</button>
+      </div>
+    `, (overlay)=>{
+      overlay.querySelector('#cancel').onclick = ()=>overlay.remove();
+      overlay.querySelector('#confirm').onclick = ()=>{ overlay.remove(); onConfirm(); };
+    });
+  }
+
+  // ---------- init ----------
+  (async function init(){
+    if(!configured){
+      root.innerHTML = '<div class="setup-note"><strong style="color:var(--text)">Almost there.</strong><br>Open <code>index.html</code> and paste your Supabase project URL and key into <code>SUPABASE_URL</code> and <code>SUPABASE_KEY</code>. The README has the steps.</div>';
+      return;
+    }
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+    if(session){ await afterLogin(); }
+    else { renderAuth(); }
+  })();
+
+})();
+</script>
+</body>
+</html>
